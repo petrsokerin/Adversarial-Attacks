@@ -3,3 +3,4 @@ results/*
 resuls_old/*
 data/*
 checkpoints/*
+.ipynb_checkpoints/*
