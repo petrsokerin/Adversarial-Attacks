@@ -1,10 +1,12 @@
+import pickle
+import os
+from typing import Dict, Any, Tuple, List, Union, Sequence, Callable
+
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm.notebook import tqdm
-import pickle
-import os
-
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -13,7 +15,7 @@ from torch import nn
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, average_precision_score
 
 
-from typing import Dict, Any, Tuple, List, Union, Sequence, Callable
+
 
 def calculate_metrics_class(y_true:np.array,
                             y_pred: np.array):

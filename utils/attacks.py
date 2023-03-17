@@ -5,6 +5,7 @@ from tqdm.notebook import tqdm
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torch import nn
+import torch.nn.functional as F
 
 from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score
 
@@ -29,6 +30,14 @@ def fgsm_reg_attack(loss_val, x, eps, alpha):
     grad_ = torch.autograd.grad(loss, x, retain_graph=True)[0]
     x_adv = x.data + eps * (torch.sign(grad_))
 
+    return x_adv
+
+def fgsm_disc_attack(loss_val, x, eps, alpha, disc_model):
+    torch.functional
+
+    loss = loss_val - alpha * torch.mean(torch.log(F.sigmoid(disc_model(x))))
+    grad_ = torch.autograd.grad(loss, x, retain_graph=True)[0]
+    x_adv = x.data + eps * torch.sign(grad_)
     return x_adv
 
 
