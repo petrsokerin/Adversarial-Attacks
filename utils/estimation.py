@@ -1,15 +1,14 @@
-import pickle
-import os
+
 from typing import Dict, Any, Tuple, List, Union, Sequence, Callable
 
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from torch import nn
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, average_precision_score
@@ -27,7 +26,7 @@ def calculate_metrics_class(y_true:np.array,
 
 
 def plot_aa_metrics(res_df, method='eps'):
-    metrics = ["ACC", "ROC AUC", "PR AUC"]
+    metrics = res_df.columns[1:-1]
     if method == 'eps':
         plt.figure(figsize=(15, 12))
 

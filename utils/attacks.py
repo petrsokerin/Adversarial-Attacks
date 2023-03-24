@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -33,10 +33,14 @@ def fgsm_reg_attack(loss_val, x, eps, alpha):
     return x_adv
 
 def fgsm_disc_attack(loss_val, x, eps, alpha, disc_model):
-    torch.functional
 
-    loss = loss_val - alpha * torch.mean(torch.log(F.sigmoid(disc_model(x))))
+    req_grad(disc_model, state=False)
+    disc_model.train(True)
+
+    loss_disc = torch.mean(torch.log(F.sigmoid(disc_model(x))))
+    loss = loss_val - alpha * loss_disc
     grad_ = torch.autograd.grad(loss, x, retain_graph=True)[0]
+    
     x_adv = x.data + eps * torch.sign(grad_)
     return x_adv
 
@@ -53,7 +57,7 @@ def build_df_aa_metrics(metric_dict: dict, eps: float):
 
     results_df = pd.DataFrame.from_dict(metric_dict, orient="index")
     results_df.set_axis(
-        pd.Index(["ACC", "ROC AUC", "PR AUC"], name="metric"), axis=1, inplace=True
+        pd.Index(["ACC", "ROC AUC", "PR AUC", "HID"], name="metric"), axis=1, inplace=True
     )
     results_df.set_axis(
         pd.Index(results_df.index, name="n steps", ), axis=0, inplace=True,
@@ -72,10 +76,29 @@ def calculate_metrics_class(y_true: np.array,
     pr = average_precision_score(y_true, y_pred)
     return acc, roc, pr
 
+def calculate_hiddeness(model, X):
 
-def calc_accuracy(y_true, y_pred, y_pred_adv):
-    acc_val = np.mean((y_pred == y_true))
-    acc_adv = np.mean((y_pred_adv == y_true))
+    model_device = next(model.parameters()).device
+    X = X.to(model_device)
+    hid = torch.mean(model(X))
+    return hid.detach().cpu().numpy()
+
+
+def calculate_metrics_class_and_hiddens(
+        y_true: np.array,
+        y_pred: np.array,
+        model,
+        X
+    ):
+    
+    acc, roc, pr = calculate_metrics_class(y_true, y_pred)
+    hid = calculate_hiddeness(model, X)
+    
+    return acc, roc, pr, hid
+
+def calc_accuracy(model, y_pred, y_pred_adv):
+    acc_val = np.mean((y_pred == model))
+    acc_adv = np.mean((y_pred_adv == model))
     return acc_val, acc_adv
 
 
@@ -91,7 +114,7 @@ def req_grad(model: nn.Module, state: bool = True) -> None:
 
 class IterGradAttack:
     def __init__(self, model, loader, attack_func, attack_params,
-                 criterion, n_steps, train_mode=False):
+                 criterion, n_steps, train_mode=False, disc_model=None):
         self.model = model
         self.loader = loader
         self.attack_func = attack_func
@@ -106,46 +129,48 @@ class IterGradAttack:
 
         self.logging = False
 
+        self.disc_model = disc_model
+
     def run_iterations(self):
         for iter_ in tqdm(range(self.n_steps)):
 
             if self.logging:
-                x_adv, y_true, preds_original, preds_adv = self.run_one_iter()
-                self.log_one_iter(iter_, y_true, preds_original, preds_adv)
+                x_adv, model, preds_original, preds_adv = self.run_one_iter()
+                self.log_one_iter(iter_, model, preds_original, preds_adv, x_adv)
             else:
-                x_adv, y_true = self.run_one_iter()
+                x_adv, model = self.run_one_iter()
 
             # rebuilding dataloader for new iteration
-            it_dataset = self.dataset_class(x_adv, torch.tensor(y_true))
+            it_dataset = self.dataset_class(x_adv, torch.tensor(model))
             self.loader = DataLoader(it_dataset, batch_size=self.batch_size)
 
-        return x_adv, y_true
+        return x_adv, model
 
     def run_one_iter(self):
 
         self.model.train(self.train_mode)
         req_grad(self.model, state=False)  # detach all model's parameters
 
-        all_y_true = torch.tensor([])  # logging y_true for rebuilding dataloader and calculation difference with preds
+        all_y_true = torch.tensor([])  # logging model for rebuilding dataloader and calculation difference with preds
         x_adv_tensor = torch.FloatTensor([])  # logging x_adv for rebuilding dataloader
 
         if self.logging:
             all_preds = []  # logging predictions original for calculation difference with data
             all_preds_adv = []  # logging predictions for calculation difference with data
 
-        for x, y_true in self.loader:
-            all_y_true = torch.cat((all_y_true, y_true.cpu().detach()), dim=0)
+        for x, model in self.loader:
+            all_y_true = torch.cat((all_y_true, model.cpu().detach()), dim=0)
 
             x.grad = None
             x.requires_grad = True
 
             # prediction for original input
             x = x.to(self.device, non_blocking=True)
-            y_true = y_true.to(self.device)
+            model = model.to(self.device)
             y_pred = self.model(x)
 
             # attack for adv input
-            loss_val = self.criterion(y_pred, y_true.reshape(-1, 1))
+            loss_val = self.criterion(y_pred, model.reshape(-1, 1))
             x_adv = self.attack_func(loss_val, x, **self.attack_params)
             x_adv_tensor = torch.cat((x_adv_tensor, x_adv.cpu().detach()), dim=0)
 
@@ -162,7 +187,7 @@ class IterGradAttack:
             return x_adv_tensor.detach(), all_y_true.detach()
 
 
-    def log_one_iter(self, iter_, y_true, preds_original, preds_adv):
+    def log_one_iter(self, iter_, model, preds_original, preds_adv, x_adv):
         if self.multiclass:
             preds_flat_round = np.argmax(np.array(preds_original), axis=1).flatten()
             preds_adv_flat_round = np.argmax(np.array(preds_adv), axis=1).flatten()
@@ -172,12 +197,13 @@ class IterGradAttack:
             preds_adv_flat_round = np.round_(np.array(preds_adv)).flatten()
             shape_diff = (1)
 
-        y_true_flat = y_true.cpu().detach().numpy().flatten()
+        y_true_flat = model.cpu().detach().numpy().flatten()
 
         # estimation
         if iter_ == 0:
             self.iter_broken_objs[preds_flat_round != y_true_flat] = iter_
-            self.aa_res_dict[iter_] = self.metric_fun(y_true_flat, preds_flat_round)
+            self.aa_res_dict[iter_] = self.metric_fun(y_true_flat, preds_flat_round,
+                                                      self.disc_model,  x_adv)
             self.preds_iter_1 = np.array(preds_original)
 
         mask = (preds_adv_flat_round != y_true_flat) & (self.iter_broken_objs > iter_)
@@ -185,7 +211,8 @@ class IterGradAttack:
         self.rejection_dict['diff'][iter_ + 1] = np.sum((self.preds_iter_1 - np.array(preds_adv)) ** 2,
                                                         axis=shape_diff)
         self.rejection_dict['iter_broke'] = self.iter_broken_objs
-        self.aa_res_dict[iter_ + 1] = self.metric_fun(y_true_flat, preds_adv_flat_round)
+        self.aa_res_dict[iter_ + 1] = self.metric_fun(y_true_flat, preds_adv_flat_round, 
+                                                      self.disc_model, x_adv)
 
 
     def run_iterations_logging(self, metric_fun, n_objects, multiclass=False):
@@ -211,11 +238,14 @@ class IterGradAttack:
 def ifgsm_procedure(model: nn.Module,
                     loader: DataLoader,
                     criterion: nn.Module,
+                    attack_func,
+                    attack_params,
                     eps_params: Tuple[float, float, int],
                     n_steps: int,
-                    metric_func=calculate_metrics_class,
+                    metric_func=calculate_metrics_class_and_hiddens,
                     n_objects=100,
                     train_mode=False,
+                    disc_model=None
                    ):
     aa_res_df = pd.DataFrame()
 
@@ -228,10 +258,10 @@ def ifgsm_procedure(model: nn.Module,
     for eps in tqdm(eps_for_check):
         print(f'*****************  EPS={eps}  ****************')
 
-        attack_func = fgsm_attack
-        attack_params = {'eps': eps}
+        attack_params['eps']=eps
         ifgsm_attack = IterGradAttack(model, loader, attack_func, attack_params,
-                                      criterion, n_steps, train_mode=train_mode)
+                                      criterion, n_steps, train_mode=train_mode,
+                                      disc_model=disc_model)
         aa_res_iter_dict, rej_curves_iter_dict = ifgsm_attack.run_iterations_logging(metric_func, n_objects, multiclass=False)
 
         rej_curves_dict[eps] = rej_curves_iter_dict
