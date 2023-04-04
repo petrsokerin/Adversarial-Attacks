@@ -4,3 +4,4 @@ resuls_old/*
 data/*
 checkpoints/*
 .ipynb_checkpoints/*
+**/__pycache__/**

@@ -48,7 +48,7 @@ def main():
 
     disc_model = load_disc_model(device=device)
 
-    for alpha in tqdm([10, 100]):
+    for alpha in tqdm([100]):
         attack_params = {'alpha':alpha}
         #attack_params = dict()
 

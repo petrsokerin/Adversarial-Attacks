@@ -46,10 +46,11 @@ def main():
     attack_func = fgsm_disc_attack
     #attack_func = fgsm_attack
 
-    disc_model = load_disc_model(device=device)
+    disc_model_reg = load_disc_model(model_name='fgsm_reg_attack_eps=0.03_alpha=0.1_nsteps=10', device=device)
+    disc_model_check = load_disc_model(model_name='fgsm_attack_eps=0.03_nsteps=10', device=device)
 
     for alpha in tqdm([0.001, 0.01, 0.1, 1, 10, 100]):
-        attack_params = {'alpha':alpha, 'disc_model': disc_model}
+        attack_params = {'alpha':alpha, 'disc_model': disc_model_reg}
         #attack_params = dict()
 
         for model_id in range(1):
@@ -62,10 +63,10 @@ def main():
                                                         attack_func=attack_func, attack_params=attack_params,
                                                         eps_params=eps_params, n_steps=n_iters,
                                                         n_objects=n_objects, train_mode=train_mode,
-                                                        disc_model=disc_model)
+                                                        disc_model=disc_model_check)
 
-            aa_res_df.to_csv(f'results/Ford_A/Regular_Disc/aa_res_Ford_A_{model_id}_alpha={alpha}.csv')
-            with open(f'results/Ford_A/Regular_Disc/rej_curves_dict_Ford_A_model_{model_id}_alpha={alpha}.pickle', 'wb') as file:
+            aa_res_df.to_csv(f'results/Ford_A/Regular_Disc/Diff_disc_2/aa_res_Ford_A_{model_id}_alpha={alpha}.csv')
+            with open(f'results/Ford_A/Regular_Disc/Diff_disc_2/rej_curves_dict_Ford_A_model_{model_id}_alpha={alpha}.pickle', 'wb') as file:
                 pickle.dump(rej_curves_dict, file)
 
 
