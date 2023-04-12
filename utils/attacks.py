@@ -13,36 +13,89 @@ from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_sco
 from typing import Dict, Any, Tuple, List, Union, Sequence, Callable
 
 
-def fgsm_attack(loss_val, x, eps):
+def simba_binary(model, loss_func, x, y_true, eps):
+
+    rand_ind = torch.randint(x.shape[1], (1,))[0]
+    mask = torch.zeros(x.shape)
+    mask[:, rand_ind] = mask[:, rand_ind] + 1
+    mask = mask.to(x.device)
+
+    y_pred = model(x)
+
+    p_orig = torch.max(y_pred, 1-y_pred)
+
+    x_minus = x - mask * eps
+    y_pred_minus = model(x_minus)
+    p_minus = torch.max(y_pred_minus, 1-y_pred_minus)
+    
+    x_plus = x + mask * eps
+    y_pred_plus = model(x_plus)
+    p_plus = torch.max(y_pred_plus, 1-y_pred_plus)
+
+    x_all = torch.cat([x, x_minus, x_plus]).view(3, *x.shape)
+
+    mask = torch.argmin(torch.hstack([p_orig, p_minus, p_plus]), dim=1)
+    mask_reshaped = mask.view(-1, 1, 1).repeat(3, 1, x_all.shape[2]).view(x_all.shape)
+
+    x_adv = x_all.gather(1, mask_reshaped)[0]
+
+    return x_adv
+
+def fgsm_attack(model, loss_func, x, y_true, eps):
+
+    y_pred = model(x)
+    loss_val = loss_func(y_pred, y_true)
+
     grad_ = torch.autograd.grad(loss_val, x, retain_graph=True)[0]
     x_adv = x.data + eps * torch.sign(grad_)
+
     return x_adv
 
 
-def fgsm_reg_attack(loss_val, x, eps, alpha):
-    x_anchor = x[:, 1:-1]
-    x_left = x[:, 2:]
-    x_right = x[:, :-2]
-    x_regular = (x_left + x_right) / 2
-    loss_reg = torch.sum((x_anchor - x_regular.detach()) ** 2, dim=list(range(1, len(x.shape))))
+def fgsm_reg_attack(model, loss_func, x, y_true, eps, alpha):
 
-    loss = loss_val - alpha * torch.mean(loss_reg)
+    y_pred = model(x)
+    loss_val = loss_func(y_pred, y_true)
+    reg_value = reg_neigh(x, alpha)
+
+    loss = loss_val - reg_value
     grad_ = torch.autograd.grad(loss, x, retain_graph=True)[0]
     x_adv = x.data + eps * (torch.sign(grad_))
 
     return x_adv
 
-def fgsm_disc_attack(loss_val, x, eps, alpha, disc_model):
+def fgsm_disc_attack(model, loss_func, x, y_true, eps: float, alpha: float, disc_models: List):
 
-    req_grad(disc_model, state=False)
-    disc_model.train(True)
+    y_pred = model(x)
+    loss_val = loss_func(y_pred, y_true)
+    reg_value = reg_disc(x, alpha, disc_models)
 
-    loss_disc = torch.mean(torch.log(F.sigmoid(disc_model(x))))
-    loss = loss_val - alpha * loss_disc
+    loss = loss_val - reg_value
     grad_ = torch.autograd.grad(loss, x, retain_graph=True)[0]
-    
     x_adv = x.data + eps * torch.sign(grad_)
+
     return x_adv
+
+
+def reg_neigh(x, alpha):
+    x_anchor = x[:, 1:-1]
+    x_left = x[:, 2:]
+    x_right = x[:, :-2]
+    x_regular = (x_left + x_right) / 2
+    reg_value = torch.sum((x_anchor - x_regular.detach()) ** 2, dim=list(range(1, len(x.shape))))
+    reg_value = alpha * torch.mean(reg_value)
+    return reg_value
+
+def reg_disc(x, alpha: float, disc_models: List):
+    n_models = len(disc_models)
+    reg_value = 0
+    for d_model in disc_models:
+        req_grad(d_model, state=False)
+        d_model.train(True)
+        reg_value = reg_value + torch.mean(torch.log(F.sigmoid(d_model(x))))
+
+    reg_value = alpha* reg_value / n_models
+    return reg_value
 
 
 def build_df_aa_metrics(metric_dict: dict, eps: float):
@@ -135,16 +188,16 @@ class IterGradAttack:
         for iter_ in tqdm(range(self.n_steps)):
 
             if self.logging:
-                x_adv, model, preds_original, preds_adv = self.run_one_iter()
-                self.log_one_iter(iter_, model, preds_original, preds_adv, x_adv)
+                x_adv, y_true, preds_original, preds_adv = self.run_one_iter()
+                self.log_one_iter(iter_, y_true, preds_original, preds_adv, x_adv)
             else:
-                x_adv, model = self.run_one_iter()
+                x_adv, y_true = self.run_one_iter()
 
             # rebuilding dataloader for new iteration
-            it_dataset = self.dataset_class(x_adv, torch.tensor(model))
+            it_dataset = self.dataset_class(x_adv, torch.tensor(y_true))
             self.loader = DataLoader(it_dataset, batch_size=self.batch_size)
 
-        return x_adv, model
+        return x_adv, y_true
 
     def run_one_iter(self):
 
@@ -158,20 +211,19 @@ class IterGradAttack:
             all_preds = []  # logging predictions original for calculation difference with data
             all_preds_adv = []  # logging predictions for calculation difference with data
 
-        for x, model in self.loader:
-            all_y_true = torch.cat((all_y_true, model.cpu().detach()), dim=0)
+        for x, y_true in self.loader:
+            all_y_true = torch.cat((all_y_true, y_true.cpu().detach()), dim=0)
 
             x.grad = None
             x.requires_grad = True
 
             # prediction for original input
             x = x.to(self.device, non_blocking=True)
-            model = model.to(self.device)
+            y_true = y_true.to(self.device).reshape(-1, 1)
+
             y_pred = self.model(x)
 
-            # attack for adv input
-            loss_val = self.criterion(y_pred, model.reshape(-1, 1))
-            x_adv = self.attack_func(loss_val, x, **self.attack_params)
+            x_adv = self.attack_func(self.model, self.criterion, x, y_true, **self.attack_params)
             x_adv_tensor = torch.cat((x_adv_tensor, x_adv.cpu().detach()), dim=0)
 
             if self.logging:
@@ -187,7 +239,7 @@ class IterGradAttack:
             return x_adv_tensor.detach(), all_y_true.detach()
 
 
-    def log_one_iter(self, iter_, model, preds_original, preds_adv, x_adv):
+    def log_one_iter(self, iter_, y_true, preds_original, preds_adv, x_adv):
         if self.multiclass:
             preds_flat_round = np.argmax(np.array(preds_original), axis=1).flatten()
             preds_adv_flat_round = np.argmax(np.array(preds_adv), axis=1).flatten()
@@ -197,7 +249,7 @@ class IterGradAttack:
             preds_adv_flat_round = np.round_(np.array(preds_adv)).flatten()
             shape_diff = (1)
 
-        y_true_flat = model.cpu().detach().numpy().flatten()
+        y_true_flat = y_true.cpu().detach().numpy().flatten()
 
         # estimation
         if iter_ == 0:
