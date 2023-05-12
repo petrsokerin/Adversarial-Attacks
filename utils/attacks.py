@@ -37,7 +37,36 @@ def simba_binary(model, loss_func, x, y_true, eps):
     mask = torch.argmin(torch.hstack([p_orig, p_minus, p_plus]), dim=1)
     mask_reshaped = mask.view(-1, 1, 1).repeat(3, 1, x_all.shape[2]).view(x_all.shape)
 
-    x_adv = x_all.gather(1, mask_reshaped)[0]
+    x_adv = x_all.gather(0, mask_reshaped)[0]
+    return x_adv
+
+
+def simba_binary_reg(model, loss_func, x, y_true, eps, alpha):
+
+    x_adv = simba_binary(model, loss_func, x, y_true, eps)
+    reg_value = reg_neigh(x_adv, alpha)
+
+    loss = - reg_value
+    grad_ = torch.autograd.grad(loss, x, retain_graph=True)[0]
+    x_adv = x_adv.data + grad_
+
+    return x_adv
+
+
+def simba_binary_disc_reg(model, 
+                          loss_func, 
+                          x, 
+                          y_true, 
+                          eps, 
+                          alpha, 
+                          disc_models):
+
+    x_adv = simba_binary(model, loss_func, x, y_true, eps)
+    reg_value = reg_disc(x_adv, alpha, disc_models)
+
+    loss = - reg_value
+    grad_ = torch.autograd.grad(loss, x, retain_graph=True)[0]
+    x_adv = x_adv.data + grad_
 
     return x_adv
 
@@ -49,6 +78,19 @@ def fgsm_attack(model, loss_func, x, y_true, eps):
     grad_ = torch.autograd.grad(loss_val, x, retain_graph=True)[0]
     x_adv = x.data + eps * torch.sign(grad_)
 
+    return x_adv
+
+def deepfool_attack(model, loss_func, x, y_true, eps):
+
+    y_pred = model(x, use_sigmoid=False, use_tanh=True)
+    grad_ = torch.autograd.grad(torch.sum(y_pred), x, retain_graph=True)[0]
+    grad_norm =  torch.linalg.norm(grad_, dim=(1, 2))
+    coef_ = y_pred * grad_norm.reshape(-1, 1)
+
+    coef_ = coef_.unsqueeze(1).repeat(1, 50, 1)    
+    perturb = - coef_ * grad_ 
+
+    x_adv = x.data + perturb
     return x_adv
 
 

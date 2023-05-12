@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from sktime.datasets import load_from_tsfile
 
 def load_Ford_A(path_train: str ="data/Ford_A/FordA_TRAIN.ts", 
@@ -38,6 +38,12 @@ def transform_Ford_A(X_train, X_test, y_train, y_test, window=50):
     y_test_tensor = torch.tensor(y_test, dtype=torch.int32)
 
     return X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor
+
+def build_dataloaders(X_train, X_test, y_train, y_test, batch_size=64):
+
+    train_loader = DataLoader(MyDataset(X_train[50:], y_train[50:]), batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(MyDataset(X_test[50:], y_test[50:]), batch_size=batch_size, shuffle=False)
+    return train_loader, test_loader
 
 class MyDataset(Dataset):
     def __init__(self, X, y, window=50):

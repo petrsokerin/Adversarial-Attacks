@@ -15,9 +15,10 @@ class LSTM_net(nn.Module):
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(hidden_dim, output_dim)
         self.dropout = nn.Dropout(dropout)
+        self.tanh = nn.Tanh()
         
         
-    def forward(self, data):
+    def forward(self, data, use_sigmoid=True, use_tanh=False):
         
         packed_output, (hidden, cell) = self.rnn(data)
         hidden = hidden.reshape(hidden.shape[1], hidden.shape[2])
@@ -25,6 +26,10 @@ class LSTM_net(nn.Module):
         hidden = self.dropout(hidden)
         output = self.relu(self.fc1(hidden))
         output = self.fc2(self.dropout(output))
-        output = torch.sigmoid(output)
+
+        if use_sigmoid:
+            output = torch.sigmoid(output)
+        elif use_tanh:
+            output = self.tanh(output)
             
         return output
