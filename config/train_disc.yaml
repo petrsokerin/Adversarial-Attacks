@@ -1,0 +1,37 @@
+dataset: FordA
+
+model_folder: 'checkpoints/Ford_A/'
+model_ids: [1]
+
+cuda: 'cuda:2'
+
+attack_model:
+  _target_: models.models.LSTM_net
+  hidden_dim: 50
+  n_layers: 1
+  output_dim: 1 
+  dropout: 0.0
+
+#Attack_params:
+attack_func: fgsm_attack
+n_iters: 2
+alpha: 0.01
+eps: 0.05
+
+
+
+# training disc params
+lr: 0.001
+step_lr: 12
+gamma: 0.1
+n_epochs: 10
+
+disc_model:
+  _target_: models.models.LSTM_net
+  hidden_dim: 50
+  n_layers: 1
+  output_dim: 1 
+  dropout: 0.0
+
+
+path_save_experiment: results/Ford_A/SimBA/Discriminator_pickle
