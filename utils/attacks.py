@@ -334,7 +334,7 @@ def ifgsm_procedure(model: nn.Module,
                     criterion: nn.Module,
                     attack_func,
                     attack_params,
-                    eps_params: Tuple[float, float, int],
+                    all_eps,
                     n_steps: int,
                     metric_func=calculate_metrics_class_and_hiddens,
                     n_objects=100,
@@ -347,9 +347,8 @@ def ifgsm_procedure(model: nn.Module,
     # diff -> #n_iteration -> np.array difference between original prediction without attack and broken predictions
     # object -> np.array n_iter when wrong prediction
 
-    eps_for_check = np.geomspace(*eps_params)
 
-    for eps in tqdm(eps_for_check):
+    for eps in tqdm(all_eps):
         print(f'*****************  EPS={eps}  ****************')
 
         attack_params['eps']=eps

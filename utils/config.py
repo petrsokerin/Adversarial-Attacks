@@ -21,6 +21,7 @@ def get_attack(attack_name):
         raise ValueError("attack name isn't correct")
     
 def load_disc_config(
+    disc_model,
     path: str, 
     device: str, 
     list_disc_params: List
@@ -29,7 +30,7 @@ def load_disc_config(
     list_disc_models = list()
 
     for params in list_disc_params:
-        model = load_disc_model(device=device, path=path, **params)
+        model = load_disc_model(disc_model, device=device, path=path, **params)
         list_disc_models.append(model)
 
     return list_disc_models

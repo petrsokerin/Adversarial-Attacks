@@ -17,19 +17,22 @@ def readucr(filename):
     x = data[:, 1:]
     return x, y.astype(int)
 
-def transform_Ford_A(X_train, X_test, y_train, y_test, window=50):
-    window = 50
-    len_seq = X_train.shape[1]
-    n_patches = len_seq//window
+def transform_data(X_train, X_test, y_train, y_test, slice_data=True, window=50):
+    X_train = X_train.reshape(X_train.shape[0], X_train.shape[1])
+    X_test = X_test.reshape(X_test.shape[0], X_test.shape[1])
 
-    X_train = np.vstack([X_train[:, i:i+window] for i in range(n_patches)])
-    X_test = np.vstack([X_test[:, i:i+window] for i in range(n_patches)])
+    if slice_data:
+        len_seq = X_train.shape[1]
+        n_patches = len_seq//window
 
-    y_train = np.array([(int(y)+1) // 2 for y in y_train])
-    y_test = np.array([(int(y)+1) // 2 for y in y_test])
+        X_train = np.vstack([X_train[:, i:i+window] for i in range(n_patches)])
+        X_test = np.vstack([X_test[:, i:i+window] for i in range(n_patches)])
 
-    y_train = np.vstack([y_train.reshape(-1, 1) for i in range(n_patches)])
-    y_test = np.vstack([y_test.reshape(-1, 1) for i in range(n_patches)])
+        y_train = np.array([(int(y)+1) // 2 for y in y_train])
+        y_test = np.array([(int(y)+1) // 2 for y in y_test])
+
+        y_train = np.vstack([y_train.reshape(-1, 1) for i in range(n_patches)])
+        y_test = np.vstack([y_test.reshape(-1, 1) for i in range(n_patches)])
 
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
     X_test_tensor =torch.tensor(X_test, dtype=torch.float32)

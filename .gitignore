@@ -6,3 +6,5 @@ checkpoints/*
 .ipynb_checkpoints/*
 **/__pycache__/**
 outputs/*
+utils/__pycache__
+old/*

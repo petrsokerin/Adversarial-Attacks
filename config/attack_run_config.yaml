@@ -1,0 +1,48 @@
+# dataset: Coffee
+# model_folder: 'checkpoints/TS2Vec/entire_model/UCR/Coffee/'
+# save_path: results/Coffee/IFGSM/Test
+
+# model_id_attack: 0
+
+# model:
+#   _target_: models.models.TS2VecClassifier
+
+dataset: Ford_A
+model_folder: 'checkpoints/LSTM/Ford_A/'
+save_path: results/Ford_A/IFGSM/Regular_Disc/Disc_reg_mixed_2
+model_id_attack: 0
+
+model:
+  _target_: models.models.LSTM_net
+  hidden_dim: 50
+  n_layers: 1
+  output_dim: 1
+  dropout: 0.2
+
+cuda: 'cuda:2'
+
+attack_type: fgsm_disc_attack
+n_iterations: 50
+all_eps: [0.0056, 0.0316, 0.1778] #[0.001, 0.01, 0.05, 0.2, 1.]
+train_mode: True
+batch_size: 64
+
+disc_path: 'results/Ford_A/IFGSM/Discriminator_pickle'
+
+disc_check_params:
+  model_id : 0
+  model_name: fgsm_attack_eps=0.03_nsteps=10
+
+list_reg_model_params:
+ - model_id: 1
+   model_name: 'fgsm_disc_attack2_eps=0.03_alpha=1_nsteps=10'
+ - model_id: 0
+   model_name: 'fgsm_disc_attack2_eps=0.03_alpha=10_nsteps=10'  
+ - model_id: 0
+   model_name: 'fgsm_disc_attack_eps=0.03_alpha=0.1_nsteps=10'
+ - model_id: 1
+   model_name: 'fgsm_disc_attack_eps=0.03_alpha=0.01_nsteps=10'
+
+
+alphas: [10, 1, 0.1, 100]
+

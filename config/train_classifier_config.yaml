@@ -1,0 +1,19 @@
+dataset: PhalangesOutlinesCorrect  
+save_path: checkpoints/PhalangesOutlinesCorrect  
+
+model_id_start: 0
+model_id_finish: 1
+
+print_every: 1
+
+model:
+  _target_: models.models.TS2VecClassifier
+
+
+cuda: 'cuda:2'
+
+batch_size: 64
+lr: 0.001
+step_size: 5
+gamma: 0.01
+n_epochs: 20

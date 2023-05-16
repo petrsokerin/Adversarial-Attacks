@@ -1,0 +1,52 @@
+dataset: Ford_A
+
+model_folder: 'checkpoints/LSTM/Ford_A/'
+save_path: results/Ford_A/IFGSM/Discriminator_pickle
+model_ids: [0, 1, 2]
+prefix: '3'
+
+cuda: 'cuda:2'
+
+TS2Vec: False
+
+attack_model:
+  _target_: models.models.LSTM_net
+  hidden_dim: 50
+  n_layers: 1
+  output_dim: 1 
+  dropout: 0.0
+
+#Attack_params:
+attack_type: fgsm_disc_attack
+n_iterations: 10
+alpha: 1
+eps: 0.03
+
+disc_path: 'results/Ford_A/IFGSM/Discriminator_pickle'
+
+list_reg_model_params:
+ - model_id: 0
+   model_name: 'fgsm_disc_attack2_eps=0.03_alpha=1_nsteps=10'
+ - model_id: 0
+   model_name: 'fgsm_disc_attack2_eps=0.03_alpha=10_nsteps=10'
+ - model_id: 1
+   model_name: 'fgsm_disc_attack2_eps=0.03_alpha=1_nsteps=10'
+ - model_id: 1
+   model_name: 'fgsm_disc_attack2_eps=0.03_alpha=10_nsteps=10'  
+
+
+# training disc params
+lr: 0.001
+step_lr: 12
+gamma: 0.1
+n_epochs: 10
+
+disc_model:
+  _target_: models.models.LSTM_net
+  hidden_dim: 50
+  n_layers: 1
+  output_dim: 1 
+  dropout: 0.0
+
+
+
