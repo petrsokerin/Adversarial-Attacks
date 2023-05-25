@@ -85,7 +85,7 @@ def deepfool_attack(model, loss_func, x, y_true, eps):
     y_pred = model(x, use_sigmoid=False, use_tanh=True)
     grad_ = torch.autograd.grad(torch.sum(y_pred), x, retain_graph=True)[0]
     grad_norm =  torch.linalg.norm(grad_, dim=(1, 2))
-    coef_ = y_pred * grad_norm.reshape(-1, 1)
+    coef_ = eps * y_pred * grad_norm.reshape(-1, 1)
 
     coef_ = coef_.unsqueeze(1).repeat(1, 50, 1)    
     perturb = - coef_ * grad_ 

@@ -51,11 +51,11 @@ class HideAttackExp:
         self.disc_device = next(discriminator_model.parameters()).device
 
         
-    def run(self, TS2Vec):
+    def run(self, TS2Vec, early_stop_thr):
         print("Generating adv data")
         self.get_disc_dataloaders(TS2Vec)
         print("Train discriminator")
-        self.train_discriminator(TS2Vec)
+        self.train_discriminator(TS2Vec, early_stop_thr)
 
         if TS2Vec:
             self.del_attack_model()
@@ -68,9 +68,13 @@ class HideAttackExp:
         X_adv, y_adv = self.attack_train[mode].run_iterations()
         X_orig = torch.tensor(self.attack_loaders[mode].dataset.X)
         X_adv = X_adv.squeeze(-1)
-    
-        disc_labels_zeros = torch.zeros((len(X_orig), 1)) #True label class
-        disc_labels_ones = torch.ones(y_adv.shape) #True label class
+
+        adv_data_labels_shape = list(y_adv.shape)
+        orig_data_labels_shape = adv_data_labels_shape
+        orig_data_labels_shape[0] = len(X_orig)
+
+        disc_labels_zeros = torch.zeros(orig_data_labels_shape) #True label class
+        disc_labels_ones = torch.ones(adv_data_labels_shape) #True label class
         
         new_x = torch.concat([X_orig, X_adv], dim=0)
         new_y = torch.concat([disc_labels_zeros, disc_labels_ones], dim=0)
@@ -95,7 +99,7 @@ class HideAttackExp:
         del self.attack_train
         del self.logger
     
-    def train_discriminator(self, TS2Vec=False):
+    def train_discriminator(self, TS2Vec=False, early_stop_thr=None):
 
         if TS2Vec:
             self.disc_model.train_embedding(self.X_train_disc)
@@ -115,7 +119,7 @@ class HideAttackExp:
             device=self.disc_device,
             multiclass=self.multiclass)
         
-        self.trainer.train_model()
+        self.trainer.train_model(early_stop_thr)
 
         self.dict_logging = self.trainer.dict_logging
         self.disc_model = self.trainer.model

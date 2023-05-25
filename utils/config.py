@@ -1,4 +1,6 @@
 from typing import List
+import os
+import shutil 
 
 from .attacks import (fgsm_disc_attack, fgsm_attack, fgsm_reg_attack, 
 simba_binary, simba_binary_reg, simba_binary_disc_reg, deepfool_attack)
@@ -19,6 +21,13 @@ def get_attack(attack_name):
         return dict_attack[attack_name]
     else:
         raise ValueError("attack name isn't correct")
+    
+def save_config(path, config_load_name, config_save_name):
+
+    if not os.path.isdir(path):
+        os.makedirs(path)
+        
+    shutil.copyfile(f'config/{config_load_name}.yaml', path + f'/{config_save_name}.yaml')
     
 def load_disc_config(
     disc_model,

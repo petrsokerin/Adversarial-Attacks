@@ -413,8 +413,8 @@ def build_custom_dict_curve(dict_curves: dict,
     return dict_curves
 
 
-def draw_rejection_curves(dict_curves, rejection_rates):
-    plt.figure(figsize=(17, 9))
+def draw_rejection_curves(dict_curves, rejection_rates, fig_size=(17, 9)):
+    plt.figure(figsize=fig_size)
 
     for i, (metric_name, curves_dict) in enumerate(dict_curves.items()):
 

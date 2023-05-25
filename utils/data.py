@@ -44,8 +44,9 @@ def transform_data(X_train, X_test, y_train, y_test, slice_data=True, window=50)
 
 def build_dataloaders(X_train, X_test, y_train, y_test, batch_size=64):
 
-    train_loader = DataLoader(MyDataset(X_train[50:], y_train[50:]), batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(MyDataset(X_test[50:], y_test[50:]), batch_size=batch_size, shuffle=False)
+    print(X_train.shape)
+    train_loader = DataLoader(MyDataset(X_train, y_train), batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(MyDataset(X_test, y_test), batch_size=batch_size, shuffle=False)
     return train_loader, test_loader
 
 class MyDataset(Dataset):
