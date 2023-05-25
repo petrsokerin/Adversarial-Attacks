@@ -1,5 +1,6 @@
-dataset: PhalangesOutlinesCorrect  
-save_path: checkpoints/PhalangesOutlinesCorrect  
+dataset: FordB  
+slice: True
+save_path: checkpoints/FordB/LSTM
 
 model_id_start: 0
 model_id_finish: 1
@@ -7,13 +8,17 @@ model_id_finish: 1
 print_every: 1
 
 model:
-  _target_: models.models.TS2VecClassifier
+  _target_: models.models.LSTM_net
+  hidden_dim: 32
+  n_layers: 1
+  output_dim: 1
+  dropout: 0.3
 
 
 cuda: 'cuda:2'
 
 batch_size: 64
 lr: 0.001
-step_size: 5
+step_size: 9
 gamma: 0.01
 n_epochs: 20

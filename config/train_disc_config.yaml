@@ -1,28 +1,34 @@
-dataset: Ford_A
+dataset: Strawberry
+slice: 50
+model_folder: 'checkpoints/TS2Vec/entire_model/UCR/Strawberry/'
+save_path: results/Strawberry/IFGSM/Discriminator_pickle
+disc_path: 'results/Strawberry/IFGSM/Discriminator_pickle'
 
-model_folder: 'checkpoints/LSTM/Ford_A/'
-save_path: results/Ford_A/IFGSM/Discriminator_pickle
 model_ids: [0, 1, 2]
-prefix: '3'
+prefix: ''
 
 cuda: 'cuda:2'
 
 TS2Vec: False
 
 attack_model:
+  _target_: models.models.TS2VecClassifier
+  dropout: None
+
+disc_model:
   _target_: models.models.LSTM_net
-  hidden_dim: 50
+  hidden_dim: 256
   n_layers: 1
-  output_dim: 1 
-  dropout: 0.0
+  output_dim: 1
+  dropout: 0.4
+
 
 #Attack_params:
-attack_type: fgsm_disc_attack
+attack_type: fgsm_attack
 n_iterations: 10
-alpha: 1
-eps: 0.03
+alpha: 0.1
+eps: 0.025
 
-disc_path: 'results/Ford_A/IFGSM/Discriminator_pickle'
 
 list_reg_model_params:
  - model_id: 0
@@ -37,16 +43,9 @@ list_reg_model_params:
 
 # training disc params
 lr: 0.001
-step_lr: 12
-gamma: 0.1
-n_epochs: 10
-
-disc_model:
-  _target_: models.models.LSTM_net
-  hidden_dim: 50
-  n_layers: 1
-  output_dim: 1 
-  dropout: 0.0
-
+step_lr: 8
+gamma: 0.5
+n_epochs: 30
+early_stop_thr: 0.8
 
 
