@@ -40,27 +40,41 @@ class LSTM_net(nn.Module):
     
 
 class HeadClassifier(nn.Module):
-    def __init__(self, emb_size, out_size):
+    def __init__(self, emb_size, out_size, dropout='None'):
         super().__init__()
         
-        self.classifier = nn.Sequential(
-            nn.Linear(emb_size, 128),
-            nn.ReLU(),
-            nn.BatchNorm1d(128),
-            nn.Linear(128, 32), 
-            nn.ReLU(),
-            nn.BatchNorm1d(32),
-            nn.Linear(32, out_size)
-        )
-        self.sign = nn.Sigmoid()
+        if dropout != 'None':
+            self.classifier = nn.Sequential(
+                nn.Linear(emb_size, 128),
+                nn.ReLU(),
+                nn.BatchNorm1d(128),
+                nn.Dropout(dropout),
+                nn.Linear(128, 32), 
+                nn.ReLU(),
+                nn.BatchNorm1d(32),
+                nn.Dropout(dropout),
+                nn.Linear(32, out_size)
+            )
+        else:
+            self.classifier = nn.Sequential(
+                nn.Linear(emb_size, 128),
+                nn.ReLU(),
+                nn.BatchNorm1d(128),
+                nn.Linear(128, 32), 
+                nn.ReLU(),
+                nn.BatchNorm1d(32),
+
+                nn.Linear(32, out_size)
+            )
+        self.sigm = nn.Sigmoid()
         
     def forward(self, x):
         out = self.classifier(x)
-        return self.sign(out)
+        return self.sigm(out)
     
     
 class TS2VecClassifier(nn.Module):
-    def __init__(self, emb_size=320, input_dim=1, n_classes=2, emb_batch_size=16,  device='cpu'):
+    def __init__(self, emb_size=320, input_dim=1, n_classes=2, emb_batch_size=16, dropout='None', device='cpu'):
         super().__init__()
         
         if n_classes == 2:
@@ -77,7 +91,7 @@ class TS2VecClassifier(nn.Module):
         
         self.emd_model = self.ts2vec.net
 
-        self.classifier = HeadClassifier(emb_size, output_size)
+        self.classifier = HeadClassifier(emb_size, output_size, dropout='None')
     
     def train_embedding(self, X_train):
         self.ts2vec.fit(X_train, verbose=False)

@@ -51,7 +51,7 @@ class Trainer:
 
             self.logger.add_scalar(metric+'/'+mode, data[metric], epoch)
     
-    def train_model(self):
+    def train_model(self, early_stop_thr=None):
         metric_names = ['loss', 'accuracy', 'precision', 'recall', 'f1', 'balance']
         self.dict_logging = {'train': {metric:[] for metric in metric_names},
                        'test': {metric:[] for metric in metric_names}}
@@ -69,6 +69,9 @@ class Trainer:
             test_metrics_epoch = {met_name:met_val for met_name, met_val 
                        in zip(metric_names, test_metrics_epoch)}
             self._logging(test_metrics_epoch, epoch, mode='test')
+
+            if early_stop_thr and test_metrics_epoch['accuracy'] > early_stop_thr:
+                break
 
             if epoch % self.print_every == 0:
                 print_line = fill_line.format(epoch+1,
