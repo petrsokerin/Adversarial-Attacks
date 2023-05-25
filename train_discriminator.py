@@ -26,9 +26,12 @@ def main(cfg: DictConfig):
 
     if cfg['dataset'] == 'Ford_A':
         X_train, X_test, y_train, y_test = load_Ford_A()
+        X_train, X_test, y_train, y_test = transform_data(X_train, X_test, y_train, y_test)
     else:
         X_train, y_train, X_test, y_test = load_UCR(cfg['dataset'])
-    X_train, X_test, y_train, y_test = transform_data(X_train, X_test, y_train, y_test)
+    
+    X_train, X_test, y_train, y_test = transform_data(X_train, X_test, y_train, y_test, slice_data=cfg['slice'])
+
     train_loader, test_loader = build_dataloaders(X_train, X_test, y_train, y_test)
 
     device= torch.device(cfg['cuda'] if torch.cuda.is_available() else 'cpu')
@@ -73,7 +76,7 @@ def main(cfg: DictConfig):
         logger = SummaryWriter(cfg['save_path']+f'/tensorboard/{model_id}')
         experiment = HideAttackExp(attack_model, train_loader, test_loader, attack_train_params, 
                                 attack_test_params, discriminator_model, disc_train_params, logger=logger)
-        experiment.run(cfg['TS2Vec'])
+        experiment.run(cfg['TS2Vec'], cfg['early_stop_thr'])
 
         save_train_disc(experiment, model_id, cfg)
         print('Success')

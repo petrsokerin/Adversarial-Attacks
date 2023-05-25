@@ -32,7 +32,7 @@ def main(cfg: DictConfig):
     else:
         X_train, y_train, X_test, y_test = load_UCR(cfg['dataset'])
     
-    X_train, X_test, y_train, y_test = transform_data(X_train, X_test, y_train, y_test)
+    X_train, X_test, y_train, y_test = transform_data(X_train, X_test, y_train, y_test, slice_data=cfg['slice'])
   
     test_loader = DataLoader(
         MyDataset(X_test, y_test), 
@@ -46,9 +46,10 @@ def main(cfg: DictConfig):
     attack_func = get_attack(cfg['attack_type'])
 
 
-    model = instantiate(cfg.model).to(device)
+    model = instantiate(cfg.attack_model).to(device)
+    disc_model = instantiate(cfg.disc_model).to(device)
     disc_model_check = load_disc_model(
-        copy.deepcopy(model),
+        copy.deepcopy(disc_model),
         model_id=cfg['disc_check_params']['model_id'], 
         path=cfg['disc_path'], 
         model_name=cfg['disc_check_params']['model_name'], 
@@ -65,7 +66,7 @@ def main(cfg: DictConfig):
         elif 'disc' in cfg['attack_type']:
             attack_params['alpha'] = alpha
             attack_params['disc_models'] = load_disc_config(
-                copy.deepcopy(model),
+                copy.deepcopy(disc_model),
                 cfg['disc_path'], 
                 device, 
                 cfg['list_reg_model_params']
@@ -80,7 +81,7 @@ def main(cfg: DictConfig):
                                                     n_objects=n_objects, train_mode=cfg['train_mode'],
                                                     disc_model=disc_model_check)
 
-        save_experiment( aa_res_df, rej_curves_dict, path=cfg['save_path'], dataset=cfg["dataset"], model_id=cfg["model_id_attack"], alpha=alpha)
+        save_experiment( aa_res_df, rej_curves_dict, path=cfg['save_path'], attack=cfg["attack_type"], dataset=cfg["dataset"], model_id=cfg["model_id_attack"], alpha=alpha)
         
 
 if __name__=='__main__':

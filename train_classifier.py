@@ -19,7 +19,7 @@ from models.train import Trainer
 from utils.utils import fix_seed
 
 
-@hydra.main(config_path='config', config_name='train_classifier', version_base=None)
+@hydra.main(config_path='config', config_name='train_classifier_config', version_base=None)
 def main(cfg: DictConfig):
 
     # load data
@@ -28,7 +28,7 @@ def main(cfg: DictConfig):
     else:
         X_train, y_train, X_test, y_test = load_UCR(cfg['dataset'])
     
-    X_train, X_test, y_train, y_test = transform_data(X_train, X_test, y_train, y_test)
+    X_train, X_test, y_train, y_test = transform_data(X_train, X_test, y_train, y_test, slice_data=cfg['slice'])
 
     print(X_train.shape)
 
