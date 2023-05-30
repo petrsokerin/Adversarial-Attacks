@@ -8,3 +8,4 @@ checkpoints/*
 outputs/*
 utils/__pycache__
 old/*
+multirun/*

@@ -76,7 +76,7 @@ def main(cfg: DictConfig):
         logger = SummaryWriter(cfg['save_path']+f'/tensorboard/{model_id}')
         experiment = HideAttackExp(attack_model, train_loader, test_loader, attack_train_params, 
                                 attack_test_params, discriminator_model, disc_train_params, logger=logger)
-        experiment.run(cfg['TS2Vec'], cfg['early_stop_thr'])
+        experiment.run(cfg['TS2Vec'], cfg['early_stop_patience'], cfg['verbose_ts2vec'])
 
         save_train_disc(experiment, model_id, cfg)
         print('Success')

@@ -48,13 +48,16 @@ def main(cfg: DictConfig):
 
     model = instantiate(cfg.attack_model).to(device)
     disc_model = instantiate(cfg.disc_model).to(device)
+    
+    disc_model_check = instantiate(cfg.disc_model_check).to(device)
     disc_model_check = load_disc_model(
-        copy.deepcopy(disc_model),
+        copy.deepcopy(disc_model_check),
         model_id=cfg['disc_check_params']['model_id'], 
         path=cfg['disc_path'], 
         model_name=cfg['disc_check_params']['model_name'], 
         device=device
         )
+    disc_model_check.eval()
 
     for alpha in tqdm(cfg['alphas']):
 
@@ -71,6 +74,8 @@ def main(cfg: DictConfig):
                 device, 
                 cfg['list_reg_model_params']
                 )  
+            
+            attack_params['disc_models'] = [model.eval() for model in  attack_params['disc_models']]
         
         model_path = cfg['model_folder'] + f'model_{cfg["model_id_attack"]}_{cfg["dataset"]}.pth'
         model.load_state_dict(copy.deepcopy(torch.load(model_path)))
