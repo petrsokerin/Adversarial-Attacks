@@ -1,33 +1,35 @@
-dataset: Strawberry
-slice: 50
-model_folder: 'checkpoints/TS2Vec/entire_model/UCR/Strawberry/'
-save_path: results/Strawberry/IFGSM/Discriminator_pickle
-disc_path: 'results/Strawberry/IFGSM/Discriminator_pickle'
+dataset: FordB
+slice: False
+model_folder: 'checkpoints/TS2Vec/entire_model/UCR/${dataset}/'
+save_path: results/${dataset}/IFGSM/Discriminator_pickle
+disc_path: 'results/${dataset}/IFGSM/Discriminator_pickle'
 
-model_ids: [0, 1, 2]
-prefix: ''
+model_ids: [0, 1, 2, 3, 4]
+prefix: '_new'
 
 cuda: 'cuda:2'
 
-TS2Vec: False
+
+TS2Vec: True
+verbose_ts2vec: False
 
 attack_model:
   _target_: models.models.TS2VecClassifier
   dropout: None
+  device: 2
 
 disc_model:
-  _target_: models.models.LSTM_net
-  hidden_dim: 256
-  n_layers: 1
-  output_dim: 1
-  dropout: 0.4
+  _target_: models.models.TS2VecClassifier
+  dropout: 0.3
+  device: 2
+  n_layers: 2
 
 
 #Attack_params:
-attack_type: fgsm_attack
+attack_type: fgsm_reg_attack
 n_iterations: 10
-alpha: 0.1
-eps: 0.025
+alpha: 0.0001
+eps: 0.13
 
 
 list_reg_model_params:
@@ -43,9 +45,9 @@ list_reg_model_params:
 
 # training disc params
 lr: 0.001
-step_lr: 8
+step_lr: 7
 gamma: 0.5
-n_epochs: 30
-early_stop_thr: 0.8
+n_epochs: 40
+early_stop_patience: 5
 
 
