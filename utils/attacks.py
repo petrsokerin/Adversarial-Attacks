@@ -110,10 +110,18 @@ def fgsm_disc_attack(model, loss_func, x, y_true, eps: float, alpha: float, disc
 
     y_pred = model(x)
     loss_val = loss_func(y_pred, y_true)
+    # grad_loss = torch.autograd.grad(loss_val, x, retain_graph=True)[0]
     reg_value = reg_disc(x, alpha, disc_models)
+    # grad_reg = torch.autograd.grad(reg_value, x, retain_graph=True)[0]
+
+    # print('norm_grad_reg', torch.linalg.norm(grad_reg))
+    # print('norm_grad_loss', torch.linalg.norm(grad_loss))
+
+    # grad_ = grad_loss - grad_reg
 
     loss = loss_val - reg_value
-    grad_ = torch.autograd.grad(loss, x, retain_graph=True)[0]
+    grad_ = torch.autograd.grad(loss_val, x, retain_graph=True)[0]
+
     x_adv = x.data + eps * torch.sign(grad_)
 
     return x_adv
@@ -132,8 +140,9 @@ def reg_disc(x, alpha: float, disc_models: List):
     n_models = len(disc_models)
     reg_value = 0
     for d_model in disc_models:
+
         req_grad(d_model, state=False)
-        d_model.train(True)
+        d_model.eval()
         reg_value = reg_value + torch.mean(torch.log(F.sigmoid(d_model(x))))
 
     reg_value = alpha* reg_value / n_models

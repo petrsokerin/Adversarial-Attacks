@@ -18,6 +18,23 @@ def req_grad(model, state: bool = True) -> None:
     for param in model.parameters():
         param.requires_grad_(state)
 
+class EarlyStopper:
+    def __init__(self, patience=1, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = np.inf
+
+    def early_stop(self, validation_loss):
+        if validation_loss < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > (self.min_validation_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
+
 
 class Trainer:
     def __init__(self, model, train_loader, test_loader, criterion, optimizer, scheduler=None,
@@ -51,7 +68,11 @@ class Trainer:
 
             self.logger.add_scalar(metric+'/'+mode, data[metric], epoch)
     
-    def train_model(self, early_stop_thr=None):
+    def train_model(self, early_stop_patience=None):
+
+        if early_stop_patience and early_stop_patience != 'None':
+            earl_stopper = EarlyStopper(early_stop_patience)
+
         metric_names = ['loss', 'accuracy', 'precision', 'recall', 'f1', 'balance']
         self.dict_logging = {'train': {metric:[] for metric in metric_names},
                        'test': {metric:[] for metric in metric_names}}
@@ -70,9 +91,6 @@ class Trainer:
                        in zip(metric_names, test_metrics_epoch)}
             self._logging(test_metrics_epoch, epoch, mode='test')
 
-            if early_stop_thr and test_metrics_epoch['accuracy'] > early_stop_thr:
-                break
-
             if epoch % self.print_every == 0:
                 print_line = fill_line.format(epoch+1,
                                   round(train_metrics_epoch['loss'], 3),
@@ -83,9 +101,15 @@ class Trainer:
                                   round(test_metrics_epoch['balance'], 3),
                                   )
                 print(print_line)
-    
+
+            if early_stop_patience and early_stop_patience != 'None':
+                res_early_stop = earl_stopper.early_stop(test_metrics_epoch['loss'])
+                if res_early_stop:
+                    break
+        
+
     def _train_step(self):
-        req_grad(self.model)
+        #req_grad(self.model)
         losses, n_batches = 0, 0
         
         y_all_pred = torch.tensor([])
@@ -140,7 +164,9 @@ class Trainer:
                 x = x.to(self.device)
                 labels = labels.reshape(-1, 1).to(self.device)
 
+
                 y_out = self.model(x)
+                #print(y_out)
                 loss = self.criterion(y_out, labels)
                 losses += loss
                 n_batches += 1

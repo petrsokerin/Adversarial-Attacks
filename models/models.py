@@ -38,34 +38,52 @@ class LSTM_net(nn.Module):
             
         return output
     
+def build_head(emb_size, out_size, n_layers=3, dropout='None'):
 
-class HeadClassifier(nn.Module):
-    def __init__(self, emb_size, out_size, dropout='None'):
-        super().__init__()
-        
+    if n_layers not in [1, 2, 3]:
+        raise ValueError('n layers should be in [3, 2, 1]')
+    if n_layers == 3:
         if dropout != 'None':
-            self.classifier = nn.Sequential(
-                nn.Linear(emb_size, 128),
-                nn.ReLU(),
-                nn.BatchNorm1d(128),
-                nn.Dropout(dropout),
-                nn.Linear(128, 32), 
-                nn.ReLU(),
-                nn.BatchNorm1d(32),
-                nn.Dropout(dropout),
+            classifier = nn.Sequential(
+                nn.Linear(emb_size, 128), nn.ReLU(), nn.BatchNorm1d(128), nn.Dropout(dropout),
+                nn.Linear(128, 32), nn.ReLU(),nn.BatchNorm1d(32),nn.Dropout(dropout),
                 nn.Linear(32, out_size)
             )
         else:
-            self.classifier = nn.Sequential(
-                nn.Linear(emb_size, 128),
-                nn.ReLU(),
-                nn.BatchNorm1d(128),
-                nn.Linear(128, 32), 
-                nn.ReLU(),
-                nn.BatchNorm1d(32),
-
+            classifier = nn.Sequential(
+                nn.Linear(emb_size, 128),nn.ReLU(),nn.BatchNorm1d(128),
+                nn.Linear(128, 32), nn.ReLU(),nn.BatchNorm1d(32),
                 nn.Linear(32, out_size)
             )
+    elif n_layers == 2:
+        if dropout != 'None':
+            classifier = nn.Sequential(
+                nn.Linear(emb_size, 64), nn.ReLU(), nn.BatchNorm1d(64), nn.Dropout(dropout),
+                nn.Linear(64, out_size)
+            )
+        else:
+            classifier = nn.Sequential(
+                nn.Linear(emb_size, 64), nn.ReLU(), nn.BatchNorm1d(64),
+                nn.Linear(64, out_size)
+            )
+
+    elif n_layers == 1:
+        if dropout != 'None':
+            classifier = nn.Sequential(
+                nn.ReLU(), nn.BatchNorm1d(emb_size), nn.Dropout(dropout), nn.Linear(emb_size, out_size)
+            )
+        else:
+            classifier = nn.Sequential(
+                nn.ReLU(), nn.BatchNorm1d(emb_size), nn.Linear(emb_size, out_size)
+            )
+    return classifier
+    
+
+class HeadClassifier(nn.Module):
+    def __init__(self, emb_size, out_size, n_layers=3, dropout='None'):
+        super().__init__()
+
+        self.classifier = build_head(emb_size, out_size, n_layers, dropout)
         self.sigm = nn.Sigmoid()
         
     def forward(self, x):
@@ -73,8 +91,9 @@ class HeadClassifier(nn.Module):
         return self.sigm(out)
     
     
+    
 class TS2VecClassifier(nn.Module):
-    def __init__(self, emb_size=320, input_dim=1, n_classes=2, emb_batch_size=16, dropout='None', device='cpu'):
+    def __init__(self, emb_size=320, input_dim=1, n_layers=3,  n_classes=2, emb_batch_size=16, dropout='None', device='cpu'):
         super().__init__()
         
         if n_classes == 2:
@@ -91,10 +110,10 @@ class TS2VecClassifier(nn.Module):
         
         self.emd_model = self.ts2vec.net
 
-        self.classifier = HeadClassifier(emb_size, output_size, dropout='None')
+        self.classifier = HeadClassifier(emb_size, output_size, n_layers=n_layers, dropout='None')
     
-    def train_embedding(self, X_train):
-        self.ts2vec.fit(X_train, verbose=False)
+    def train_embedding(self, X_train, verbose=False):
+        self.ts2vec.fit(X_train, verbose=verbose)
         self.emd_model = self.ts2vec.net
         
     def forward(self, X, mask=None):
