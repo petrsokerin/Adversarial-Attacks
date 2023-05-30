@@ -51,11 +51,11 @@ class HideAttackExp:
         self.disc_device = next(discriminator_model.parameters()).device
 
         
-    def run(self, TS2Vec, early_stop_thr):
+    def run(self, TS2Vec=False, early_stop_patience=None, verbose_ts2vec=False):
         print("Generating adv data")
         self.get_disc_dataloaders(TS2Vec)
         print("Train discriminator")
-        self.train_discriminator(TS2Vec, early_stop_thr)
+        self.train_discriminator(TS2Vec, early_stop_patience, verbose_ts2vec=verbose_ts2vec)
 
         if TS2Vec:
             self.del_attack_model()
@@ -99,10 +99,11 @@ class HideAttackExp:
         del self.attack_train
         del self.logger
     
-    def train_discriminator(self, TS2Vec=False, early_stop_thr=None):
+    def train_discriminator(self, TS2Vec=False, early_stop_patience=None, verbose_ts2vec=False):
 
         if TS2Vec:
-            self.disc_model.train_embedding(self.X_train_disc)
+            print('Training TS2Vec')
+            self.disc_model.train_embedding(self.X_train_disc, verbose=verbose_ts2vec)
             for param in self.disc_model.emd_model.parameters():
                 param.requires_grad = False
 
@@ -119,7 +120,7 @@ class HideAttackExp:
             device=self.disc_device,
             multiclass=self.multiclass)
         
-        self.trainer.train_model(early_stop_thr)
+        self.trainer.train_model(early_stop_patience)
 
         self.dict_logging = self.trainer.dict_logging
         self.disc_model = self.trainer.model
