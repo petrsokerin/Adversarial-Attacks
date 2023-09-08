@@ -93,7 +93,7 @@ class HeadClassifier(nn.Module):
     
     
 class TS2VecClassifier(nn.Module):
-    def __init__(self, emb_size=320, input_dim=1, n_layers=3,  n_classes=2, emb_batch_size=16, dropout='None', device='cpu'):
+    def __init__(self, emb_size=320, input_dim=1, n_layers=3,  n_classes=2, emb_batch_size=16, dropout='None', dropout_ts2vec=0.1, device='cpu'):
         super().__init__()
         
         if n_classes == 2:
@@ -103,6 +103,7 @@ class TS2VecClassifier(nn.Module):
 
         self.ts2vec = TS2Vec(
         input_dims=input_dim,
+        dropout=dropout_ts2vec,
         device=device,
         output_dims=emb_size,
         batch_size=emb_batch_size
