@@ -25,7 +25,7 @@ def calculate_metrics_class(y_true:np.array,
     return acc, roc, pr
 
 
-def plot_aa_metrics(res_df, method='eps'):
+def plot_aa_metrics(res_df, method='eps', inverse=False):
     metrics = res_df.columns[1:-1]
     if method == 'eps':
         plt.figure(figsize=(15, 12))
@@ -35,7 +35,11 @@ def plot_aa_metrics(res_df, method='eps'):
 
             for metric in metrics:
                 df_loc = res_df[res_df['eps'] == eps].copy()
-                plt.plot(df_loc.index, df_loc[metric], label=metric)
+                data_logs = df_loc[metric]
+                if inverse:
+                    data_logs = 1 - data_logs
+
+                plt.plot(df_loc.index, data_logs, label=metric)
             plt.title(f'Eps = {round(eps, 4)}')
             plt.xlabel('n iterations')
             plt.legend()
@@ -50,7 +54,12 @@ def plot_aa_metrics(res_df, method='eps'):
 
             for eps in res_df['eps'].unique():
                 df_loc = res_df[res_df['eps'] == eps].copy()
-                plt.plot(df_loc.index, df_loc[metric], label=f'Eps = {round(eps, 4)}')
+
+                data_logs = df_loc[metric]
+                if inverse:
+                    data_logs = 1 - data_logs
+                plt.plot(df_loc.index, data_logs, label=f'Eps = {round(eps, 4)}')
+
             plt.title(metric)
             plt.xlabel('n iterations')
             plt.legend()
