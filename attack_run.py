@@ -59,7 +59,11 @@ def main(cfg: DictConfig):
         )
     disc_model_check.eval()
 
-    for alpha in tqdm(cfg['alphas']):
+    alphas = [0]
+    if 'reg' in cfg['attack_type'] or 'disc' in cfg['attack_type']:
+        alphas = cfg['alphas']
+
+    for alpha in tqdm(alphas):
 
         attack_params = dict()
 
