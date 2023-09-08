@@ -24,7 +24,7 @@ def generate_binomial_mask(B, T, p=0.5):
     return torch.from_numpy(np.random.binomial(1, p, size=(B, T))).to(torch.bool)
 
 class TSEncoder(nn.Module):
-    def __init__(self, input_dims, output_dims, hidden_dims=64, depth=10, mask_mode='binomial'):
+    def __init__(self, input_dims, output_dims, hidden_dims=64, depth=10, mask_mode='binomial', dropout=0.1):
         super().__init__()
         self.input_dims = input_dims
         self.output_dims = output_dims
@@ -36,7 +36,7 @@ class TSEncoder(nn.Module):
             [hidden_dims] * depth + [output_dims],
             kernel_size=3
         )
-        self.repr_dropout = nn.Dropout(p=0.1)
+        self.repr_dropout = nn.Dropout(p=dropout)
         
     def forward(self, x, mask=None):  # x: B x T x input_dims
 #         nan_mask = ~x.isnan().any(axis=-1)
